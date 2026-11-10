@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,7 +55,7 @@ fun TabBar(tab: Tab, onTab: (Tab) -> Unit, mailBadge: Int, modifier: Modifier = 
 /** [position] is the pager position: 1.5 is halfway between the second and third tab. */
 @Composable
 fun TabBar(position: Float, onTab: (Tab) -> Unit, mailBadge: Int, modifier: Modifier = Modifier) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     val shape = RoundedCornerShape(30.dp)
     val count = Tab.entries.size
     // Between two tabs the edge in the direction of travel runs ahead and the other lags, so the

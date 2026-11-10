@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -276,7 +277,11 @@ private fun GradeRow(g: Grade) {
                 listOfNotNull(g.code.ifBlank { null }, "${g.credits} kr.", g.completion).joinToString(" · "),
                 fontSize = 13.sp, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            val sub = listOfNotNull(g.gradeText?.takeIf { g.grade != null }, g.examiner).joinToString(" · ")
+            val cool = coolGrade(g.grade).takeIf { LocalCoolGrades.current }
+            if (cool != null) {
+                Text(cool, fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = gradeColor(g.grade), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            val sub = listOfNotNull(g.gradeText?.takeIf { g.grade != null && cool == null }, g.examiner).joinToString(" · ")
             if (sub.isNotBlank()) Text(sub, fontSize = 12.5.sp, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         partLabel(g.part)?.let { (text, color) ->
@@ -291,6 +296,20 @@ private fun partLabel(part: String?): Pair<String, Color>? = when (part?.upperca
     "B" -> "Pov. voliteľný" to Violet
     "C" -> "Výberový" to Sky
     "SS" -> "Štátnica" to Pink
+    else -> null
+}
+
+/** "Cool známky" from settings. */
+val LocalCoolGrades = staticCompositionLocalOf { false }
+
+/** The cool name for a grade: A – Absolútna dominancia … FX – Fixácia. */
+fun coolGrade(grade: String?): String? = when (grade?.uppercase()) {
+    "A" -> "Absolútna dominancia"
+    "B" -> "Brutalita"
+    "C" -> "Cieľavedomosť"
+    "D" -> "Dominancia"
+    "E" -> "Efektivita"
+    "FX", "F" -> "Fixácia"
     else -> null
 }
 

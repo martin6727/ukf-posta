@@ -6,7 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -496,7 +496,7 @@ private fun SwipeableRow(
 @Composable
 fun MessageRow(m: MailHeader, onClick: () -> Unit, onStar: () -> Unit) {
     val unread = !m.seen
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     val surface = MaterialTheme.colorScheme.surface
     val bg by animateColorAsState(
         if (unread) Indigo.copy(alpha = if (dark) 0.14f else 0.07f).compositeOver(surface) else surface,

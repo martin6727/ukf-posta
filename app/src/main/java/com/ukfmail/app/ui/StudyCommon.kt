@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +37,7 @@ import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,6 +86,9 @@ enum class Tab(val label: String, val icon: ImageVector) {
     EXAMS("Skúšky", Icons.Outlined.EventAvailable),
     GRADES("Známky", Icons.Outlined.School),
 }
+
+/** Opens the settings sheet from anywhere in the app. */
+val LocalOpenSettings = staticCompositionLocalOf<() -> Unit> { {} }
 
 /** Room the floating tab bar takes at the bottom, on top of the system navigation bar. */
 val TabBarSpace = 84.dp
@@ -172,6 +176,8 @@ fun StudyTitle(kicker: String, title: String, updatedAt: Long, loading: Boolean)
                 fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Spacer(Modifier.width(8.dp))
+        GlassButton(Icons.Outlined.Settings, "Nastavenia", LocalOpenSettings.current, size = 36.dp)
     }
     Spacer(Modifier.height(20.dp))
     if (kicker.isNotBlank()) {

@@ -134,8 +134,20 @@ class Store(context: Context) {
         get() = prefs.getString("aisError", null)
         set(v) = prefs.edit().putString("aisError", v).apply()
 
+    /** "SYSTEM", "LIGHT" or "DARK". Kept after signing out, it is about the phone, not the account. */
+    var themeMode: String
+        get() = prefs.getString("theme", "SYSTEM") ?: "SYSTEM"
+        set(v) = prefs.edit().putString("theme", v).apply()
+
+    /** Grade descriptions like "A – Absolútna dominancia" instead of "výborne". */
+    var coolGrades: Boolean
+        get() = prefs.getBoolean("coolGrades", false)
+        set(v) = prefs.edit().putBoolean("coolGrades", v).apply()
+
     fun signOut() {
-        prefs.edit().clear().apply()
+        val theme = themeMode
+        val cool = coolGrades
+        prefs.edit().clear().putString("theme", theme).putBoolean("coolGrades", cool).apply()
     }
 
     private fun key(): SecretKey {

@@ -2,7 +2,7 @@ package com.ukfmail.app.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -63,7 +63,7 @@ fun LoginScreen(message: String?, signIn: suspend (user: String, password: Strin
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf(message) }
     val scope = rememberCoroutineScope()
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
 
     fun submit() {
         if (busy || user.isBlank() || pass.isEmpty()) return

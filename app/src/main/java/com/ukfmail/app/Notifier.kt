@@ -116,7 +116,8 @@ object Notifier {
     }
 
     fun showGrade(context: Context, g: Grade) {
-        val text = listOfNotNull(g.gradeText, g.examiner).joinToString(" · ").ifBlank { "${g.credits} kreditov" }
+        val cool = com.ukfmail.app.ui.coolGrade(g.grade).takeIf { Store(context).coolGrades }
+        val text = listOfNotNull(cool ?: g.gradeText, g.examiner).joinToString(" · ").ifBlank { "${g.credits} kreditov" }
         study(context, "grade:${g.id}", "Nová známka ${g.grade} · ${g.name}", text, MainActivity.TAB_GRADES)
     }
 

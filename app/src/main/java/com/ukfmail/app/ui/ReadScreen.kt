@@ -13,7 +13,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -174,7 +174,7 @@ fun ReadScreen(vm: MailViewModel, screen: Screen.Read, snackbar: SnackbarHostSta
 /** Same layout as the page's header card, plus pulsing lines where the text will be. */
 @Composable
 private fun ReadPlaceholder(h: MailHeader, modifier: Modifier) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     val card = if (dark) Color(0xFF191A22) else Color(0xFFF4F4F9)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val pulse = rememberInfiniteTransition(label = "pulse")
@@ -254,7 +254,7 @@ private fun MessageWebView(
     onReady: () -> Unit,
     modifier: Modifier,
 ) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     val context = LocalContext.current
     val page = remember(body, dark) { MessageHtml.page(body, dark) }
     AndroidView(

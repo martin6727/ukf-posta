@@ -8,6 +8,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BatteryAlert
+import androidx.compose.material.icons.outlined.BrightnessAuto
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.School
@@ -71,7 +76,16 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsSheet(store: Store, onDismiss: () -> Unit, onSignOut: () -> Unit, askNotificationPermission: () -> Unit) {
+fun SettingsSheet(
+    store: Store,
+    onDismiss: () -> Unit,
+    onSignOut: () -> Unit,
+    askNotificationPermission: () -> Unit,
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    onThemeMode: (ThemeMode) -> Unit = {},
+    coolGrades: Boolean = false,
+    onCoolGrades: (Boolean) -> Unit = {},
+) {
     val ctx = LocalContext.current
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var enabled by remember { mutableStateOf(store.notificationsEnabled) }
@@ -138,6 +152,9 @@ fun SettingsSheet(store: Store, onDismiss: () -> Unit, onSignOut: () -> Unit, as
                     }
                 }
             }
+            Spacer(Modifier.height(24.dp))
+
+            AppearanceSection(themeMode, onThemeMode, coolGrades, onCoolGrades)
             Spacer(Modifier.height(24.dp))
 
             SettingRow(Icons.Outlined.NotificationsActive, "Upozorniť na nový e-mail", "Kontrola doručenej pošty na pozadí") {
@@ -288,5 +305,60 @@ private fun requestBatteryExemption(ctx: Context) {
         ctx.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${ctx.packageName}")))
     } catch (e: Exception) {
         runCatching { ctx.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+    }
+}
+
+/** Light or dark look, and the cool grade names. */
+@Composable
+internal fun AppearanceSection(mode: ThemeMode, onMode: (ThemeMode) -> Unit, cool: Boolean, onCool: (Boolean) -> Unit) {
+    Text("Vzhľad", fontWeight = FontWeight.SemiBold)
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ThemeMode.entries.forEach { m ->
+            val selected = m == mode
+            val shape = RoundedCornerShape(18.dp)
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(shape)
+                    .then(
+                        if (selected) Modifier.background(Brush.linearGradient(listOf(Indigo, Violet, Pink)))
+                        else Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    )
+                    .clickable { onMode(m) }
+                    .padding(vertical = 14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val icon = when (m) {
+                    ThemeMode.SYSTEM -> Icons.Outlined.BrightnessAuto
+                    ThemeMode.LIGHT -> Icons.Outlined.LightMode
+                    ThemeMode.DARK -> Icons.Outlined.DarkMode
+                }
+                val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+                Icon(icon, null, tint = fg)
+                Spacer(Modifier.height(6.dp))
+                Text(m.label, color = fg, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
+            }
+        }
+    }
+    Spacer(Modifier.height(18.dp))
+    SettingRow(Icons.Outlined.AutoAwesome, "Cool známky", "Namiesto „výborne“ ukáže „Absolútna dominancia“") {
+        Switch(checked = cool, onCheckedChange = onCool, colors = SwitchDefaults.colors(checkedTrackColor = Indigo))
+    }
+    if (cool) {
+        Spacer(Modifier.height(12.dp))
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            listOf("A", "B", "C", "D", "E", "FX").forEach { g ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GradeBadge(g, 28.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(coolGrade(g).orEmpty(), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = gradeColor(g))
+                }
+            }
+        }
     }
 }

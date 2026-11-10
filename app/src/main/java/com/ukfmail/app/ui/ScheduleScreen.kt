@@ -3,7 +3,7 @@ package com.ukfmail.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -339,7 +339,7 @@ private fun LessonCard(l: Lesson, now: LocalDateTime, off: StudyEvent? = null, o
     val past = cancelled || !now.isBefore(l.end)
     val startsIn = Duration.between(now, l.start).toMinutes()
     val soon = !ongoing && !past && !cancelled && l.start.toLocalDate() == now.toLocalDate() && startsIn in 0..120
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     val surface = MaterialTheme.colorScheme.surfaceContainer
     val bg = if (ongoing) Indigo.copy(alpha = if (dark) 0.2f else 0.09f).compositeOver(surface) else surface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant

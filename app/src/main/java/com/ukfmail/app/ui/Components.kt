@@ -15,7 +15,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -58,7 +58,7 @@ val Sky = Color(0xFF38BDF8)
 /** Soft colored light behind headers. [phase] (0..1) slowly moves the blobs when animated. */
 @Composable
 fun Glow(modifier: Modifier, phase: Float = 0f, strength: Float = 1f) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     val a = (if (dark) 0.42f else 0.30f) * strength
     Canvas(modifier) {
         val w = size.width
@@ -86,7 +86,7 @@ fun AnimatedGlow(modifier: Modifier, strength: Float = 1f) {
 /** Round translucent button used over the glow. */
 @Composable
 fun GlassButton(icon: ImageVector, description: String, onClick: () -> Unit, size: Dp = 44.dp) {
-    val dark = isSystemInDarkTheme()
+    val dark = isDark()
     Surface(
         onClick = onClick,
         shape = CircleShape,

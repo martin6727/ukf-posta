@@ -16,8 +16,8 @@ android {
         applicationId = "com.ukfmail.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3.0"
+        versionCode = 6
+        versionName = "1.3.1"
     }
 
     // Release signing key lives outside git: keystore.properties (storeFile, storePassword, keyAlias, keyPassword).

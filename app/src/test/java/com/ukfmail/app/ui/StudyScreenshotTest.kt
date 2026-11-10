@@ -2,6 +2,8 @@ package com.ukfmail.app.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -130,5 +132,13 @@ class StudyScreenshotTest {
     @Test fun tabBarMidSwipe() = paparazzi.snapshot {
         AppTheme { Surface { androidx.compose.foundation.layout.Column { listOf(0f, 0.3f, 0.5f, 0.8f, 2f).forEach { TabBar(position = it, onTab = {}, mailBadge = 2) } } } }
     }
+    @Test fun gradesCool() = paparazzi.snapshot {
+        AppTheme { androidx.compose.runtime.CompositionLocalProvider(LocalCoolGrades provides true) { Grades() } }
+    }
+    @Test fun appearanceSettings() = paparazzi.snapshot {
+        AppTheme(ThemeMode.LIGHT) { Surface { androidx.compose.foundation.layout.Column(androidx.compose.foundation.layout.PaddingValues(24.dp).let { Modifier.padding(it) }) { AppearanceSection(ThemeMode.LIGHT, {}, true, {}) } } }
+    }
+    @Test fun forcedDarkOnLightPhone() = paparazzi.snapshot { AppTheme(ThemeMode.DARK) { Exams() } }
+
     @Test fun aisLogin() = paparazzi.snapshot { AppTheme { Login() } }
 }

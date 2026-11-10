@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -46,6 +47,11 @@ import com.ukfmail.app.events.MailEventStore
 import com.ukfmail.app.mail.MailService
 import com.ukfmail.app.mail.Protocol
 import com.ukfmail.app.ui.AppTheme
+import com.ukfmail.app.ui.LocalCoolGrades
+import com.ukfmail.app.ui.LocalOpenSettings
+import com.ukfmail.app.ui.ThemeMode
+import com.ukfmail.app.ui.isDark
+import androidx.compose.runtime.CompositionLocalProvider
 import com.ukfmail.app.ui.ExamsScreen
 import com.ukfmail.app.ui.GradesScreen
 import com.ukfmail.app.ui.ScheduleScreen
@@ -76,6 +82,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var store: Store
     private var signedIn by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
+    private var themeMode by mutableStateOf(ThemeMode.SYSTEM)
+    private var coolGrades by mutableStateOf(false)
     private var loginMessage by mutableStateOf<String?>(null)
     /** Bumped on sign-in so the mail ViewModel starts fresh. */
     private var session by mutableIntStateOf(0)
@@ -93,20 +101,36 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == ACTION_SETTINGS && signedIn) showSettings = true
         if (signedIn) EventScan.enqueue(this)
 
+        themeMode = runCatching { ThemeMode.valueOf(store.themeMode) }.getOrDefault(ThemeMode.SYSTEM)
+        coolGrades = store.coolGrades
+
         setContent {
-            AppTheme {
-                if (!signedIn) {
-                    LoginScreen(loginMessage) { user, pass -> signIn(user, pass) }
-                } else {
-                    MailApp(session)
+            AppTheme(themeMode) {
+                // Status and navigation bar icons follow the app's light or dark look, not only the phone's.
+                val dark = isDark()
+                LaunchedEffect(dark) {
+                    val style = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                    enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
                 }
-                if (showSettings && signedIn) {
-                    SettingsSheet(
-                        store = store,
-                        onDismiss = { showSettings = false },
-                        onSignOut = { signOut(null) },
-                        askNotificationPermission = { askPermission() },
-                    )
+                CompositionLocalProvider(LocalCoolGrades provides coolGrades, LocalOpenSettings provides { showSettings = true }) {
+                    if (!signedIn) {
+                        LoginScreen(loginMessage) { user, pass -> signIn(user, pass) }
+                    } else {
+                        MailApp(session)
+                    }
+                    if (showSettings && signedIn) {
+                        SettingsSheet(
+                            store = store,
+                            onDismiss = { showSettings = false },
+                            onSignOut = { signOut(null) },
+                            askNotificationPermission = { askPermission() },
+                            themeMode = themeMode,
+                            onThemeMode = { themeMode = it; store.themeMode = it.name },
+                            coolGrades = coolGrades,
+                            onCoolGrades = { coolGrades = it; store.coolGrades = it },
+                        )
+                    }
                 }
             }
         }

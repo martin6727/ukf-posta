@@ -15,6 +15,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,9 +37,22 @@ val Indigo = Color(0xFF5B5EF4)
 val Violet = Color(0xFF8B5CF6)
 val BrandGradient = Brush.linearGradient(listOf(Indigo, Violet))
 
+enum class ThemeMode(val label: String) { SYSTEM("Podľa systému"), LIGHT("Svetlý"), DARK("Tmavý") }
+
+/** Whether the app is dark right now (the user's choice in settings, or the phone's). */
+val LocalDark = staticCompositionLocalOf { false }
+
 @Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    val scheme = if (isSystemInDarkTheme()) {
+fun isDark(): Boolean = LocalDark.current
+
+@Composable
+fun AppTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
+    val dark = when (mode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    val scheme = if (dark) {
         darkColorScheme(
             primary = Color(0xFF9294FA), onPrimary = Color(0xFF14154A),
             primaryContainer = Color(0xFF2C2D63), onPrimaryContainer = Color(0xFFE2E2FF),
@@ -75,7 +90,9 @@ fun AppTheme(content: @Composable () -> Unit) {
         titleLarge = base.titleLarge.copy(fontWeight = FontWeight.SemiBold),
         titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
     )
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    CompositionLocalProvider(LocalDark provides dark) {
+        MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    }
 }
 
 /** Two-tone avatar gradients; each sender always gets the same one. */
