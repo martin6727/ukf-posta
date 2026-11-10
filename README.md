@@ -70,3 +70,7 @@ The password is encrypted with a key in the phone's Android Keystore and sent on
 AiS2 answers are kept in the app's private files (`files/ais/`), which helps when AiS2 changes its data.
 
 Signed with `ukf-posta.jks` / `keystore.properties` (kept out of git; back them up, or future updates won't install over this version).
+
+## License
+
+MIT, see [LICENSE](LICENSE). The app is provided as is, without warranty: check important things (exam sign-ups, deadlines) in AiS2 itself.

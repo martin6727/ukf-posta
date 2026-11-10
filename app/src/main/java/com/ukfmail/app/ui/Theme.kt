@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -153,10 +154,14 @@ fun AppMark(size: Dp) {
             .size(size)
             .shadow(size * 0.2f, corner, ambientColor = Indigo, spotColor = Indigo)
             .clip(corner)
-            .background(BrandGradient),
+            .background(Brush.linearGradient(listOf(Indigo, Violet, Color(0xFFEC4899)))),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Outlined.Mail, null, tint = Color.White, modifier = Modifier.size(size * 0.5f))
+        // The launcher owl; its drawing fills the middle two thirds of the 108dp layer.
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(com.ukfmail.app.R.drawable.ic_launcher_foreground), null,
+            modifier = Modifier.requiredSize(size * 1.5f),
+        )
     }
 }
 
