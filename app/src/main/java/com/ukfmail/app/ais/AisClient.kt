@@ -38,7 +38,7 @@ class AisClient(private val login: String, private val password: String) {
         if (token == null) throw AisLoginException("AiS2 neprijal prihlasovacie meno alebo heslo.")
     }
 
-    fun get(path: String): String = rest("GET", path, null)
+    fun get(path: String, headers: Map<String, String> = emptyMap()): String = rest("GET", path, null, headers)
 
     fun post(path: String, body: String? = null): String = rest("POST", path, body)
 
@@ -46,19 +46,19 @@ class AisClient(private val login: String, private val password: String) {
 
     /** Signs in when needed; a session that died on the server gets one fresh sign-in and a retry. */
     @Synchronized
-    private fun rest(method: String, path: String, json: String?, retried: Boolean = false): String {
+    private fun rest(method: String, path: String, json: String?, headers: Map<String, String> = emptyMap(), retried: Boolean = false): String {
         if (token == null) signIn()
         val sep = if ('?' in path) '&' else '?'
         val r = call(
             method, "$path${sep}lng=SK",
             body = json?.toByteArray() ?: if (method == "POST") ByteArray(0) else null,
             contentType = if (json != null) "application/json" else null,
-            extra = mapOf("AISAuth" to token.orEmpty(), "Accept" to "application/json, text/calendar, */*"),
+            extra = headers + mapOf("AISAuth" to token.orEmpty(), "Accept" to "application/json, text/calendar, */*"),
         )
         r.header("aisAuth")?.takeIf { it.isNotBlank() }?.let { token = it }
         if ((r.code == 401 || r.code == 403) && !retried) {
             token = null
-            return rest(method, path, json, retried = true)
+            return rest(method, path, json, headers, retried = true)
         }
         if (r.code == 401) throw AisLoginException("Prihlásenie do AiS2 vypršalo.")
         if (r.code !in 200..299) throw AisException(r.code, serverMessage(r.text) ?: "AiS2 vrátil chybu ${r.code}.")

@@ -54,18 +54,25 @@ class AisRepo(context: Context) {
             if (read("sheet.txt") != sheet.id) listOf("znamky.json", "skusky.json", "priemery.json", "prehlad.json").forEach { File(dir, it).delete() }
             save("sheet.txt", sheet.id)
             val p = "/ais/rest/portal/student-predmety"
-            part("znamky.json") { client.get("$p/znamky/${sheet.id}") }
+            part("znamky.json") { grades(client, sheet.id) }
             part("skusky.json") { client.get("$p/skusky/${sheet.id}/v2") }
             part("priemery.json") { client.get("$p/studium-priemery/${sheet.id}") }
             part("prehlad.json") { client.get("$p/studium-prehlad/${sheet.id}") }
             read("znamky.json")?.let { save("znamky-${sheet.id}.json", it) }
             // Other years only change when a grade is added late; the background check skips them.
-            if (withTimetable) sheets.filter { it.id != sheet.id }.forEach { s -> part("znamky-${s.id}.json") { client.get("$p/znamky/${s.id}") } }
+            if (withTimetable) sheets.filter { it.id != sheet.id }.forEach { s -> part("znamky-${s.id}.json") { grades(client, s.id) } }
         }
         if (withTimetable) fetchTimetable(client)
         return build(sheets, sheet, read("znamky.json"), read("skusky.json"), read("priemery.json"), read("prehlad.json"),
             read("rozvrh.ics"), read("rozvrh.json"), System.currentTimeMillis()).withYears(sheets)
     }
+
+    /**
+     * Subjects of an enrolment sheet, asked for the way the AiS2 web asks. Without this header the answer
+     * held only the compulsory subjects (part A), not the compulsory-elective (B) or elective (C) ones.
+     */
+    private fun grades(client: AisClient, sheetId: String) =
+        client.get("/ais/rest/portal/student-predmety/znamky/$sheetId", mapOf(ALL_SUBJECTS_HEADER to ALL_SUBJECTS_HEADER))
 
     private fun fetchTimetable(client: AisClient) {
         val json = runCatching { client.get("/ais/rest/apps/rozvrh/data") }.getOrNull()
@@ -149,6 +156,8 @@ class AisRepo(context: Context) {
     }
 
     companion object {
+        private const val ALL_SUBJECTS_HEADER = "f4XB27Zb3RFatc4"
+
         fun academicYear(d: LocalDate): String =
             if (d.monthValue >= 9) "${d.year}/${d.year + 1}" else "${d.year - 1}/${d.year}"
 
