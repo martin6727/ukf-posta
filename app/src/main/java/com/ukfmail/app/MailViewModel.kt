@@ -53,15 +53,34 @@ enum class MailFilter(val label: String) { ALL("Všetky"), UNREAD("Neprečítan�
 
 private val INBOX = MailFolder("INBOX", "Doručená pošta", FolderRole.INBOX, -1)
 
+/** Sent mail kept on the phone, for accounts whose server has no Sent folder (POP3). */
+val LOCAL_SENT = MailFolder("local:sent", "Odoslané", FolderRole.SENT, -1)
+
+/** Adds the phone's own Sent folder when the server has none. */
+private fun withLocalSent(list: List<MailFolder>): List<MailFolder> =
+    if (list.any { it.role == FolderRole.SENT }) list else list + LOCAL_SENT
+
 class MailViewModel(app: Application) : AndroidViewModel(app) {
     private val store = Store(app)
+    private val sent = SentStore(app)
     private val lock = Mutex()
     private var service: MailService? = null
 
     val stack = mutableStateListOf<Screen>(Screen.Inbox)
     val screen: Screen get() = stack.last()
 
-    var folders by mutableStateOf(listOf(INBOX)); private set
+    var folders by mutableStateOf(withLocalSent(listOf(INBOX))); private set
+
+    /** People the user has written to, for suggestions while typing To/Cc. */
+    var contacts by mutableStateOf(sent.contacts()); private set
+
+    /** Addresses offered in the From field: the main one first, then those added in settings. */
+    val senderOptions: List<String>
+        get() {
+            val main = store.emailAddress?.trim()?.ifBlank { null }
+                ?: store.userName?.let { "$it@student.ukf.sk" }
+            return (listOfNotNull(main) + store.extraSenders).distinctBy { it.lowercase() }
+        }
     var folder by mutableStateOf(INBOX); private set
     var messages by mutableStateOf<List<MailHeader>>(emptyList()); private set
     var loading by mutableStateOf(false); private set
@@ -130,6 +149,22 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh(initial: Boolean = false) {
         if (refreshing || loading) return
+        if (folder.fullName == LOCAL_SENT.fullName) {
+            listError = null
+            canLoadMore = false
+            if (messages.isEmpty()) loading = true else refreshing = true
+            viewModelScope.launch {
+                try {
+                    val list = withContext(Dispatchers.IO) { sent.all().map { it.toHeader() } }
+                    if (!initial && messages.isNotEmpty()) kotlinx.coroutines.delay(350) // let the pull indicator show
+                    messages = list
+                    contacts = sent.contacts()
+                } finally {
+                    loading = false; refreshing = false
+                }
+            }
+            return
+        }
         if (initial || messages.isEmpty()) loading = true else refreshing = true
         listError = null
         viewModelScope.launch {
@@ -169,7 +204,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun loadFolders() {
         runCatching { mail { it.folders() } }.onSuccess { list ->
-            if (list.isNotEmpty()) folders = list
+            if (list.isNotEmpty()) folders = withLocalSent(list)
             folders.firstOrNull { it.fullName == folder.fullName }?.let { folder = it }
         }
         if (store.emailAddress.isNullOrBlank()) {
@@ -189,7 +224,8 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     val visibleMessages: List<MailHeader>
         get() {
             val q = query.trim()
-            val base = when (filter) {
+            // Sent mail shows no filters, so one picked in another folder must not hide it.
+            val base = when (if (folder.role == FolderRole.SENT) MailFilter.ALL else filter) {
                 MailFilter.ALL -> messages
                 MailFilter.UNREAD -> messages.filter { !it.seen }
                 MailFilter.FLAGGED -> messages.filter { it.flagged }
@@ -221,6 +257,14 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun open(h: MailHeader) {
         stack.add(Screen.Read(h))
+        if (h.folder == LOCAL_SENT.fullName) {
+            openJob?.cancel()
+            showRemote = false
+            val m = sent.get(h.uid)
+            body = m?.toBody(h)
+            bodyError = if (m == null) "Správa sa nenašla" else null
+            return
+        }
         val key = h.folder + "/" + h.uid
         val cached = bodyCache[key]
         body = cached; bodyError = null; showRemote = false
@@ -259,6 +303,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleSeen(h: MailHeader) {
+        if (h.folder == LOCAL_SENT.fullName) return
         val target = !h.seen
         updateHeader(h.uid) { it.copy(seen = target) }
         viewModelScope.launch {
@@ -273,6 +318,7 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleFlag(h: MailHeader) {
+        if (h.folder == LOCAL_SENT.fullName) return
         val target = !h.flagged
         updateHeader(h.uid) { it.copy(flagged = target) }
         viewModelScope.launch {
@@ -286,6 +332,11 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
         val before = messages
         messages = messages.filter { it.uid != h.uid }
         if (screen is Screen.Read) back()
+        if (h.folder == LOCAL_SENT.fullName) {
+            sent.remove(h.uid)
+            toast = "Správa zmazaná"
+            return
+        }
         viewModelScope.launch {
             runCatching { mail { it.delete(h.folder, h.uid) } }
                 .onSuccess { toast = if (folder.role == FolderRole.TRASH || protocol == Protocol.POP3) "Správa zmazaná" else "Presunuté do koša" }
@@ -317,9 +368,12 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
     fun reply(all: Boolean) {
         val b = body ?: return
         val h = b.header
-        val to = b.replyTo ?: if (h.fromName != h.fromEmail && h.fromName.isNotBlank()) "${h.fromName} <${h.fromEmail}>" else h.fromEmail
+        val to = b.replyTo ?: Recipients.format(h.fromName.takeIf { it != h.fromEmail }, h.fromEmail)
         val me = ownAddress.lowercase()
-        val cc = if (all) (b.to + b.cc).filter { me.isBlank() || !it.lowercase().contains(me) }.joinToString(", ") else ""
+        val cc = if (all) (b.to + b.cc)
+            .filter { me.isBlank() || !it.lowercase().contains(me) }
+            .filter { !to.contains(it, ignoreCase = true) }
+            .joinToString(", ") else ""
         compose(
             Draft(
                 to = to,
@@ -400,7 +454,22 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                         )
                     )
                 }
-                store.emailAddress = fromAddr
+                if (store.emailAddress.isNullOrBlank()) store.emailAddress = fromAddr
+                val now = System.currentTimeMillis()
+                withContext(Dispatchers.IO) {
+                    if (folders.any { it.fullName == LOCAL_SENT.fullName }) {
+                        sent.add(
+                            SentMail(
+                                id = "s$now", date = now, from = fromAddr, fromName = store.displayName,
+                                to = draft.to, cc = draft.cc, subject = draft.subject, body = draft.body,
+                                attachments = draft.attachments.map { it.name to it.size },
+                            )
+                        )
+                    } else {
+                        sent.remember(draft.to, now); sent.remember(draft.cc, now)
+                    }
+                }
+                contacts = sent.contacts()
                 toast = "Odoslané"
                 onSent()
                 if (folder.role == FolderRole.SENT) refresh()
@@ -410,6 +479,41 @@ class MailViewModel(app: Application) : AndroidViewModel(app) {
                 sending = false
             }
         }
+    }
+
+    // --- local Sent folder ---
+
+    /** List row: shows who it went to, like other mail apps do in Sent. */
+    private fun SentMail.toHeader(): MailHeader {
+        val first = runCatching { javax.mail.internet.InternetAddress.parse(to, false).firstOrNull() }.getOrNull()
+        val email = first?.address.orEmpty()
+        val name = first?.personal?.ifBlank { null } ?: email.ifBlank { to }
+        val more = runCatching { javax.mail.internet.InternetAddress.parse("$to,$cc".trim(','), false).size - 1 }.getOrDefault(0)
+        return MailHeader(
+            uid = id, folder = LOCAL_SENT.fullName,
+            fromName = "Pre: $name" + if (more > 0) " +$more" else "",
+            fromEmail = email,
+            subject = subject.ifBlank { "(bez predmetu)" }, date = date,
+            seen = true, flagged = false, hasAttachments = attachments.isNotEmpty(),
+        )
+    }
+
+    /** Reading view: from me, to them; replying goes to the recipients. */
+    private fun SentMail.toBody(listHeader: MailHeader): MailBody {
+        val split = { s: String -> s.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() } }
+        val text = buildString {
+            append(body)
+            if (attachments.isNotEmpty()) {
+                append("\n\n— Prílohy (neuložené v telefóne): ")
+                append(attachments.joinToString(", ") { (n, s) -> "$n (${s / 1024} kB)" })
+            }
+        }
+        return MailBody(
+            header = listHeader.copy(fromName = fromName?.ifBlank { null } ?: from, fromEmail = from),
+            to = split(to), cc = split(cc), replyTo = to, messageId = null, references = null,
+            html = com.ukfmail.app.mail.BodyParser.plainToHtml(text), plainText = body,
+            hasRemoteContent = false, attachments = emptyList(),
+        )
     }
 
     // --- navigation ---

@@ -16,8 +16,9 @@ android {
         applicationId = "com.ukfmail.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "1.3.3"
+        versionCode = 10
+        versionName = "1.4.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Release signing key lives outside git: keystore.properties (storeFile, storePassword, keyAlias, keyPassword).
@@ -81,7 +82,13 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
+    // TLS 1.0 for the university SMTP server only (see mail/LegacyTls.kt).
+    implementation("org.bouncycastle:bctls-jdk18on:1.80")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 
     testImplementation("junit:junit:4.13.2")
+    // On-device checks (old Android emulator): ./gradlew connectedDebugAndroidTest with ANDROID_SERIAL set.
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("org.json:json:20240303")
 }

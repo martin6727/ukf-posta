@@ -175,7 +175,8 @@ fun InboxScreen(
                         loading = vm.loading,
                         error = vm.listError,
                         loadingMore = vm.loadingMore,
-                        canMarkRead = true,
+                        canMarkRead = vm.folder.role != FolderRole.SENT,
+                        sentFolder = vm.folder.role == FolderRole.SENT,
                         onMenu = { scope.launch { drawer.open() } },
                         onAvatar = onSettings,
                         onOpen = { vm.open(it) },
@@ -222,6 +223,8 @@ fun InboxList(
     onDelete: (MailHeader) -> Unit,
     onRetry: () -> Unit,
     bottomSpace: Dp = 0.dp,
+    /** Sent mail: no read state or stars, so no unread count and no filters for them. */
+    sentFolder: Boolean = false,
 ) {
     val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val groups = remember(messages) { messages.groupBy { dayGroup(it.date) } }
@@ -254,9 +257,9 @@ fun InboxList(
     ) {
         item(key = "header") {
             Column(Modifier.onSizeChanged { headerPx = it.height }) {
-                InboxHeader(folderName, hello, userName, unread, onMenu, onAvatar)
+                InboxHeader(folderName, hello, userName, unread, onMenu, onAvatar, sentCount = if (sentFolder) messages.size else null)
                 SearchField(query, onQuery)
-                FilterRow(filter, unread, onFilter)
+                if (!sentFolder) FilterRow(filter, unread, onFilter) else Spacer(Modifier.height(8.dp))
             }
         }
 
@@ -300,7 +303,10 @@ fun InboxList(
 }
 
 @Composable
-private fun InboxHeader(folderName: String, hello: String, userName: String, unread: Int, onMenu: () -> Unit, onAvatar: () -> Unit) {
+private fun InboxHeader(
+    folderName: String, hello: String, userName: String, unread: Int, onMenu: () -> Unit, onAvatar: () -> Unit,
+    sentCount: Int? = null,
+) {
     Box(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -327,7 +333,13 @@ private fun InboxHeader(folderName: String, hello: String, userName: String, unr
                 letterSpacing = (-0.8).sp,
             )
             Spacer(Modifier.height(10.dp))
-            if (unread > 0) {
+            if (sentCount != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.AutoMirrored.Outlined.Send, null, tint = Indigo, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(sentLabel(sentCount), fontSize = 13.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else if (unread > 0) {
                 Row(
                     Modifier
                         .clip(RoundedCornerShape(50))
@@ -348,6 +360,13 @@ private fun InboxHeader(folderName: String, hello: String, userName: String, unr
             }
         }
     }
+}
+
+fun sentLabel(n: Int) = when (n) {
+    0 -> "Zatiaľ nič odoslané z tohto telefónu"
+    1 -> "1 odoslaná správa"
+    in 2..4 -> "$n odoslané správy"
+    else -> "$n odoslaných správ"
 }
 
 fun unreadLabel(n: Int) = when (n) {
@@ -515,7 +534,7 @@ fun MessageRow(m: MailHeader, onClick: () -> Unit, onStar: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box {
-            Avatar(m.fromName, m.fromEmail.ifBlank { m.fromName }, 48.dp)
+            Avatar(m.fromName.removePrefix("Pre: "), m.fromEmail.ifBlank { m.fromName }, 48.dp)
             if (unread) {
                 Box(
                     Modifier

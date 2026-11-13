@@ -23,7 +23,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
@@ -93,6 +97,7 @@ fun SettingsSheet(
     var interval by remember { mutableIntStateOf(store.intervalMinutes) }
     var email by remember { mutableStateOf(store.emailAddress.orEmpty()) }
     var name by remember { mutableStateOf(store.displayName.orEmpty()) }
+    var extras by remember { mutableStateOf(store.extraSenders) }
     var status by remember { mutableStateOf(statusText(store)) }
     val pm = ctx.getSystemService(PowerManager::class.java)
     var batteryOk by remember { mutableStateOf(pm.isIgnoringBatteryOptimizations(ctx.packageName)) }
@@ -254,6 +259,9 @@ fun SettingsSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            Spacer(Modifier.height(16.dp))
+            SendersSection(email, extras) { extras = it; store.extraSenders = it }
+
             Spacer(Modifier.height(20.dp))
             OutlinedButton(
                 onClick = onSignOut,
@@ -267,6 +275,70 @@ fun SettingsSheet(
         }
     }
 }
+
+/** Extra From addresses: the list with ✕, and a field to add one. */
+@Composable
+internal fun SendersSection(primary: String, extras: List<String>, onExtras: (List<String>) -> Unit) {
+    var newSender by remember { mutableStateOf("") }
+    var newSenderError by remember { mutableStateOf<String?>(null) }
+    Column {
+            Text("Ďalšie adresy na odosielanie", fontWeight = FontWeight.SemiBold)
+            Text(
+                "Pri písaní si ich vyberieš v poli Od.",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            for (a in extras) {
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 2.dp).clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Avatar(a, a, 30.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(a, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { onExtras(extras - a) }) {
+                        Icon(Icons.Outlined.Close, "Odstrániť $a")
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            fun addSender() {
+                val a = newSender.trim()
+                newSenderError = when {
+                    !EMAIL.matches(a) -> "Toto nevyzerá ako e-mailová adresa"
+                    a.equals(primary.trim(), true) || extras.any { it.equals(a, true) } -> "Túto adresu už máš"
+                    else -> null
+                }
+                if (newSenderError == null) {
+                    onExtras(extras + a); newSender = ""
+                }
+            }
+            OutlinedTextField(
+                value = newSender, onValueChange = { newSender = it; newSenderError = null },
+                label = { Text("Pridať adresu") },
+                placeholder = { Text("napr. 123456@student.ukf.sk") },
+                isError = newSenderError != null,
+                supportingText = {
+                    Text(
+                        newSenderError
+                            ?: "Odosiela sa cez server UKF. Adresy mimo ukf.sk server môže odmietnuť alebo skončia v spame."
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { addSender() }, enabled = newSender.isNotBlank()) {
+                        Icon(Icons.Outlined.Add, "Pridať", tint = if (newSender.isNotBlank()) Indigo else MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                singleLine = true, shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { addSender() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+    }
+}
+
+private val EMAIL = Regex("^[^@\\s,;<>]+@[^@\\s,;<>]+\\.[^@\\s,;<>]{2,}$")
 
 @Composable
 private fun SettingRow(icon: ImageVector, title: String, subtitle: String, trailing: @Composable () -> Unit) {

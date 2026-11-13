@@ -52,6 +52,11 @@ class Store(context: Context) {
         get() = prefs.getString("displayName", null)
         set(v) = prefs.edit().putString("displayName", v).apply()
 
+    /** More addresses to pick in the From field, besides [emailAddress]. In the order added. */
+    var extraSenders: List<String>
+        get() = prefs.getString("extraSenders", null)?.split('\n')?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+        set(v) = prefs.edit().putString("extraSenders", v.map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }.joinToString("\n")).apply()
+
     /** POP3 has no read flag on the server, so read state is kept here. */
     var popSeen: Set<String>
         get() = prefs.getStringSet("popSeen", emptySet()) ?: emptySet()

@@ -23,9 +23,9 @@ An unofficial Android app for UKF Nitra students: student email (studentmail.ukf
 
 - **Notifications for new mail.** Every 15, 30 or 60 minutes the app checks the inbox in the background. Each new email gets its own notification with the sender and subject. Tap it to open the email, or tap **Označiť ako prečítané** (mark as read). Notifications for mail you've read elsewhere go away on their own.
 - **Inbox** grouped by day (Dnes, Včera, Tento týždeň…), with gradient sender avatars, stars and attachment icons. Filters for unread, starred and attachments. Swipe a message right to mark it read or unread; swipe sideways anywhere to move between the tabs. Pull down to refresh; older mail loads as you scroll. Search covers sender and subject.
-- **Folders** (Inbox, Sent, Drafts, Trash, Spam and your own) with unread counts, in the side menu.
-- **Reading** HTML and plain-text mail, with embedded images and attachments you can open. Images from the internet stay hidden until you tap **Zobraziť**.
-- **Writing** new mail, reply, reply all and forward, with attachments up to the server's 15 MB limit.
+- **Folders** (Inbox, Sent, Drafts, Trash, Spam and your own) with unread counts, in the side menu. With POP3, which has no folders on the server, **Odoslané** (Sent) keeps a copy of everything sent from the app on the phone.
+- **Reading** HTML and plain-text mail, with embedded images and attachments you can open. Images from the internet stay hidden until you tap **Zobraziť**. Links open only when you tap them; a mail can't open pages or other apps by itself.
+- **Writing** new mail, reply, reply all and forward, with attachments up to the server's 15 MB limit. Recipients become bubbles like in Gmail, and people you've written to before are suggested as you type (diacritics don't matter: "stef" finds Štefan). Pick the **Od** (From) address from the ones you add in settings.
 - **Dark mode** that follows the phone.
 
 ### AiS2
@@ -57,15 +57,19 @@ UKF's published settings for students, over SSL:
 
 With POP3 there are no folders and read state is kept in the app.
 
+The SMTP server on 465 only offers TLS 1.0, which current Android no longer has, so sending alone goes through a bundled [BouncyCastle](https://www.bouncycastle.org/) TLS stack. The server certificate is still checked against the phone's own root store; weak ciphers are off. Older phones (Android 8 to about 13) don't have the newer HARICA root yet, so the app bundles the official cross-signed certificate to the older HARICA root they do have. Checked on an Android 8.0 emulator (`app/src/androidTest`).
+
 ## Privacy
 
-The password is encrypted with a key in the phone's Android Keystore and sent only to studentmail.ukf.sk and ais2.ukf.sk. **Odhlásiť sa** deletes it.
+The password is encrypted with a key in the phone's Android Keystore and sent only to studentmail.ukf.sk and ais2.ukf.sk. Sent copies and recipient suggestions stay in the app's private storage on the phone. **Odhlásiť sa** deletes all of it.
 
 ## Build
 
 ```
 ./gradlew testDebugUnitTest assembleRelease
 ```
+
+Screenshots on small phones, large fonts and a tablet: `./gradlew recordPaparazziDebug --tests '*DevicesScreenshotTest*'`. On a phone or emulator: `ANDROID_SERIAL=<device> ./gradlew connectedDebugAndroidTest`.
 
 AiS2 answers are kept in the app's private files (`files/ais/`), which helps when AiS2 changes its data.
 

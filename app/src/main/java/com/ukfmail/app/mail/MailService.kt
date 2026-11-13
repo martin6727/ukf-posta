@@ -415,7 +415,7 @@ class MailService(
         runCatching { if (isOpen) close(false) }
     }
 
-    private fun String.normalizeList() = replace(';', ',').trim().trimEnd(',')
+    private fun String.normalizeList() = com.ukfmail.app.Recipients.normalizeList(this)
 
     /**
      * Runs a mail operation. If the server dropped the connection (an idle POP3 inbox times out),
@@ -445,6 +445,11 @@ class MailService(
             put("mail.$p.writetimeout", "30000")
         }
         for (p in listOf("imaps", "pop3s", "smtps")) put("mail.$p.ssl.checkserveridentity", "true")
+        // studentmail.ukf.sk:465 only speaks TLS 1.0 (checked 2026-11-13; POP3 995 has TLS 1.2),
+        // which current Android TLS can't do any more. SMTP alone goes through BouncyCastle; see LegacyTls.
+        put("mail.smtps.ssl.socketFactory", LegacyTls.socketFactory)
+        // Without this JavaMail quietly retries with the system TLS when ours fails, hiding the real error.
+        put("mail.smtps.socketFactory.fallback", "false")
         put("mail.smtps.auth", "true")
         put("mail.smtp.auth", "true")
         put("mail.imaps.partialfetch", "false")

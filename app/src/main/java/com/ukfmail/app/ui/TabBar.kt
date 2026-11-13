@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
@@ -72,6 +74,7 @@ fun TabBar(position: Float, onTab: (Tab) -> Unit, mailBadge: Int, modifier: Modi
         modifier
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp)
+            .widthIn(max = 560.dp) // a tablet doesn't need the tabs a hand-width apart
             .fillMaxWidth()
             .height(64.dp)
             .shadow(22.dp, shape, ambientColor = Indigo.copy(alpha = 0.5f), spotColor = Indigo.copy(alpha = 0.5f))
@@ -132,7 +135,11 @@ fun TabBar(position: Float, onTab: (Tab) -> Unit, mailBadge: Int, modifier: Modi
                         }
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            t.label, color = color, maxLines = 1, fontSize = 11.sp,
+                            // The bar has a fixed height, so labels grow with the phone's font size only up to 15 %,
+                            // like Android's own navigation bars.
+                            t.label, color = color, maxLines = 1, softWrap = false,
+                            fontSize = (11f * minOf(LocalDensity.current.fontScale, 1.15f) / LocalDensity.current.fontScale).sp,
+                            lineHeight = (14f * minOf(LocalDensity.current.fontScale, 1.15f) / LocalDensity.current.fontScale).sp,
                             fontWeight = if (inside > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
                         )
                     }

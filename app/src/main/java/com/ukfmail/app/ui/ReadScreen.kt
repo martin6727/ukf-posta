@@ -101,8 +101,10 @@ fun ReadScreen(vm: MailViewModel, screen: Screen.Read, snackbar: SnackbarHostSta
                             else Icon(Icons.Outlined.StarOutline, "Označiť hviezdičkou")
                         }
                     }
-                    IconButton(onClick = { vm.toggleSeen(header.copy(seen = true)); vm.back() }) {
-                        Icon(Icons.Outlined.MarkEmailUnread, "Označiť ako neprečítané")
+                    if (header.folder != com.ukfmail.app.LOCAL_SENT.fullName) {
+                        IconButton(onClick = { vm.toggleSeen(header.copy(seen = true)); vm.back() }) {
+                            Icon(Icons.Outlined.MarkEmailUnread, "Označiť ako neprečítané")
+                        }
                     }
                     IconButton(onClick = { vm.delete(header) }) { Icon(Icons.Outlined.Delete, "Zmazať") }
                 },
@@ -280,16 +282,24 @@ private fun MessageWebView(
                     override fun onPageFinished(view: WebView, url: String?) = onReady()
 
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                        // Only a real tap on a link in the mail does anything. A meta refresh, an iframe or a
+                        // redirect in the mail's HTML would otherwise open pages or other apps by itself.
+                        if (!request.isForMainFrame || !request.hasGesture() || request.isRedirect) return true
                         val u = request.url
-                        when (u.scheme) {
+                        when (u.scheme?.lowercase()) {
                             "ukf" -> when (u.host) {
                                 "remote" -> onShowRemote()
                                 "att" -> u.lastPathSegment?.toIntOrNull()?.let(onAttachment)
                             }
                             "mailto" -> onMailto(u)
-                            else -> runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            "http", "https", "tel" -> runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, u)
+                                        .addCategory(Intent.CATEGORY_BROWSABLE)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
                             }
+                            // Anything else (custom app links, intent:, file:, content:) is ignored.
                         }
                         return true
                     }
@@ -327,6 +337,7 @@ object MessageHtml {
         }
         val sb = StringBuilder()
         sb.append("<!doctype html><html><head><meta charset=\"utf-8\">")
+        sb.append("<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'none'; frame-src 'none'; child-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'\">")
         sb.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
         sb.append("<meta name=\"color-scheme\" content=\"${if (dark) "dark" else "light"}\">")
         sb.append("<style>").append(css(dark)).append("</style></head><body><div class=\"ukfx-root\">")
@@ -358,6 +369,19 @@ object MessageHtml {
     private val STYLE = Regex("(?is)<style[^>]*>(.*?)</style>")
     private val BODY = Regex("(?is)<body[^>]*>(.*)</body>")
     private val DOC_TAGS = Regex("(?is)<!doctype[^>]*>|</?(html|head|body)\\b[^>]*>|<meta[^>]*>|<title>.*?</title>|<link[^>]*>")
+    /** Tags that can navigate, embed or submit on their own. Removed, the text between them stays. */
+    private val UNSAFE_TAGS = Regex("(?is)</?(meta|link|base|iframe|frame|frameset|object|embed|applet|form|script|noscript|portal)\\b[^>]*>")
+
+    /** Removes [pattern] until nothing changes, so nested tricks like `<me<meta>ta …>` don't survive. */
+    private fun stripAll(s: String, pattern: Regex): String {
+        var cur = s
+        repeat(10) {
+            val next = pattern.replace(cur, "")
+            if (next == cur) return cur
+            cur = next
+        }
+        return pattern.replace(cur, "").replace("<", "&lt;") // still changing after 10 rounds: give up on markup
+    }
     /** `html`, `body` and `:root` at the start of a selector. */
     private val ROOT_SELECTOR = Regex("""(^|[},;>\s])(html|body|:root)(?=[\s,{.:#\[>~+])""", RegexOption.IGNORE_CASE)
 
@@ -367,7 +391,7 @@ object MessageHtml {
      */
     fun isolate(html: String): String {
         val css = STYLE.findAll(html).joinToString("\n") { ROOT_SELECTOR.replace(it.groupValues[1]) { m -> m.groupValues[1] + ".ukf-mail" } }
-        val inner = (BODY.find(html)?.groupValues?.get(1) ?: html).replace(STYLE, "").replace(DOC_TAGS, "")
+        val inner = stripAll((BODY.find(html)?.groupValues?.get(1) ?: html).replace(STYLE, "").replace(DOC_TAGS, ""), UNSAFE_TAGS)
         return (if (css.isNotBlank()) "<style>$css</style>" else "") + inner
     }
 

@@ -9,3 +9,8 @@
 -dontwarn java.awt.**
 -dontwarn javax.security.sasl.**
 -dontwarn javax.naming.**
+
+# BouncyCastle TLS (mail/LegacyTls.kt): providers look up their classes by name.
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
+-dontwarn javax.naming.**

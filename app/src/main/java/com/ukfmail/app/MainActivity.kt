@@ -275,6 +275,7 @@ class MainActivity : ComponentActivity() {
         File(cacheDir, "attachments").deleteRecursively()
         AisRepo(this).clear()
         MailEventStore(this).clear()
+        SentStore(this).clear()
         AisCheck.schedule(this)
         viewModelStore.clear()
         loginMessage = message
